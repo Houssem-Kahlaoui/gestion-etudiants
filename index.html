@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Étudiants - SQLite3</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-user-graduate"></i> Gestion des Étudiants</h1>
+            <p class="subtitle">Avec système de notes et calcul de moyenne</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Section Formulaire -->
+            <section class="form-section card">
+                <h2><i class="fas fa-user-plus"></i> Ajouter un étudiant</h2>
+                <form id="studentForm">
+                    <div class="form-group">
+                        <label for="cin"><i class="fas fa-id-card"></i> CIN (8 chiffres) :</label>
+                        <input type="text" id="cin" placeholder="12345678" pattern="\d{8}" maxlength="8" required>
+                        <small class="hint">Code d'Identification National à 8 chiffres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="nom">Nom :</label>
+                        <input type="text" id="nom" placeholder="Entrez le nom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="prenom">Prénom :</label>
+                        <input type="text" id="prenom" placeholder="Entrez le prénom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="age">Âge :</label>
+                        <input type="number" id="age" min="15" max="30" placeholder="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="filiere">Filière :</label>
+                        <select id="filiere" required>
+                            <option value="">Sélectionnez une filière</option>
+                            <option value="Informatique">Informatique</option>
+                            <option value="Mathématiques">Mathématiques</option>
+                            <option value="Physique">Physique</option>
+                            <option value="Chimie">Chimie</option>
+                            <option value="Biologie">Biologie</option>
+                            <option value="Génie Civil">Génie Civil</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Ajouter Étudiant
+                    </button>
+                </form>
+                
+                <hr style="margin: 20px 0;">
+                
+                <h3><i class="fas fa-edit"></i> Ajouter/Mettre à jour les notes</h3>
+                <form id="notesForm">
+                    <div class="form-group">
+                        <label for="cin_notes">CIN de l'étudiant :</label>
+                        <input type="text" id="cin_notes" placeholder="12345678" pattern="\d{8}" maxlength="8" required>
+                    </div>
+                    <div class="notes-grid">
+                        <div class="form-group">
+                            <label for="math">Mathématiques :</label>
+                            <input type="number" id="math" min="0" max="20" step="0.5" placeholder="0-20" required>
+                            <small class="hint">Coeff 3</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="phys">Physique :</label>
+                            <input type="number" id="phys" min="0" max="20" step="0.5" placeholder="0-20" required>
+                            <small class="hint">Coeff 4</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="info">Informatique :</label>
+                            <input type="number" id="info" min="0" max="20" step="0.5" placeholder="0-20" required>
+                            <small class="hint">Coeff 2</small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-calculator"></i> Calculer et Enregistrer la Moyenne
+                    </button>
+                </form>
+            </section>
+
+            <!-- Section Listes -->
+            <section class="lists-section">
+                <!-- Contrôles communs -->
+                <div class="controls card">
+                    <div class="section-header">
+                        <h2><i class="fas fa-chart-line"></i> Tableaux de gestion</h2>
+                        <div class="controls-buttons">
+                            <button id="refreshBtn" class="btn btn-secondary">
+                                <i class="fas fa-sync-alt"></i> Actualiser Tout
+                            </button>
+                            <button onclick="resetDatabase()" class="btn btn-warning">
+                                <i class="fas fa-redo"></i> Réinitialiser
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="message" class="message"></div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3><i class="fas fa-users"></i> Total</h3>
+                            <p class="stat-number" id="totalCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3><i class="fas fa-trophy"></i> Admis</h3>
+                            <p class="stat-number" id="admisCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3><i class="fas fa-percentage"></i> Taux de réussite</h3>
+                            <p class="stat-number" id="successRate">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tableau Tous les étudiants -->
+                <div class="list-section card">
+                    <h3><i class="fas fa-list"></i> Tous les étudiants</h3>
+                    <div class="table-container">
+                        <table id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>CIN</th>
+                                    <th>Nom</th>
+                                    <th>Prénom</th>
+                                    <th>Âge</th>
+                                    <th>Filière</th>
+                                    <th>Math</th>
+                                    <th>Phys</th>
+                                    <th>Info</th>
+                                    <th>Moyenne</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsList">
+                                <tr id="loadingRow">
+                                    <td colspan="10" class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i> Chargement...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tableau Étudiants Admis -->
+                <div class="list-section card admitted-card">
+                    <h3><i class="fas fa-trophy"></i> Étudiants Admis (Moyenne ≥ 10)</h3>
+                    <div class="table-container">
+                        <table id="admisTable">
+                            <thead>
+                                <tr>
+                                    <th>CIN</th>
+                                    <th>Nom</th>
+                                    <th>Prénom</th>
+                                    <th>Moyenne</th>
+                                    <th>Filière</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admisList">
+                                <tr>
+                                    <td colspan="6" class="loading">
+                                        <i class="fas fa-spinner fa-spin"></i> Chargement...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            <p>Projet Gestion des Étudiants - SQLite3 + Python</p>
+            <p class="note">Coefficients: Mathématiques(3), Physique(4), Informatique(2)</p>
+        </footer>
+    </div>
+
+    <!-- Script JavaScript -->
+    <script>
+        // Charger les données au démarrage
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllData();
+            
+            // Gérer le formulaire d'ajout d'étudiant
+            document.getElementById('studentForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addStudent();
+            });
+            
+            // Gérer le formulaire d'ajout de notes
+            document.getElementById('notesForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addNotes();
+            });
+            
+            // Bouton d'actualisation
+            document.getElementById('refreshBtn').addEventListener('click', function() {
+                loadAllData();
+            });
+            
+            // Validation en temps réel du CIN
+            document.getElementById('cin').addEventListener('input', validateCin);
+            document.getElementById('cin_notes').addEventListener('input', validateCinNotes);
+        });
+
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function validateCin() {
+            const cin = document.getElementById('cin').value;
+            const cinInput = document.getElementById('cin');
+            if (cin.length === 8 && /^\d+$/.test(cin)) {
+                cinInput.style.borderColor = '#28a745';
+            } else {
+                cinInput.style.borderColor = '#dc3545';
+            }
+        }
+
+        function validateCinNotes() {
+            const cin = document.getElementById('cin_notes').value;
+            const cinInput = document.getElementById('cin_notes');
+            if (cin.length === 8 && /^\d+$/.test(cin)) {
+                cinInput.style.borderColor = '#28a745';
+            } else {
+                cinInput.style.borderColor = '#dc3545';
+            }
+        }
+
+        function loadAllData() {
+            loadStudents();
+            loadAdmis();
+            loadStats();
+        }
+
+        function loadStudents() {
+            const tbody = document.getElementById('studentsList');
+            
+            fetch('/api/etudiants')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showMessage('Erreur: ' + data.error, 'error');
+                        tbody.innerHTML = '<tr><td colspan="10" class="empty">Erreur de chargement</td></tr>';
+                        return;
+                    }
+                    
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="10" class="empty">Aucun étudiant enregistré</td></tr>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.forEach(student => {
+                        const math = student.note_math !== null ? student.note_math.toFixed(1) : '-';
+                        const phys = student.note_phys !== null ? student.note_phys.toFixed(1) : '-';
+                        const info = student.note_info !== null ? student.note_info.toFixed(1) : '-';
+                        const moyenne = student.moyenne !== null ? student.moyenne.toFixed(2) : '-';
+                        const moyenneClass = student.moyenne >= 10 ? 'admis' : (student.moyenne !== null ? 'non-admis' : '');
+                        
+                        html += `
+                            <tr>
+                                <td><span class="cin-display">${student.cin}</span></td>
+                                <td>${student.nom}</td>
+                                <td>${student.prenom}</td>
+                                <td>${student.age}</td>
+                                <td>${student.filiere}</td>
+                                <td>${math}</td>
+                                <td>${phys}</td>
+                                <td>${info}</td>
+                                <td class="${moyenneClass}">${moyenne}</td>
+                                <td>
+                                    <button onclick="deleteStudent('${student.cin}')" class="btn-delete" title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty">Erreur de connexion</td></tr>';
+                });
+        }
+
+        function loadAdmis() {
+            const tbody = document.getElementById('admisList');
+            
+            fetch('/api/admis')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty">Erreur de chargement</td></tr>';
+                        return;
+                    }
+                    
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="empty">Aucun étudiant admis</td></tr>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.forEach(student => {
+                        const moyenne = student.moyenne.toFixed(2);
+                        const mention = getMention(student.moyenne);
+                        
+                        html += `
+                            <tr>
+                                <td><span class="cin-display">${student.cin}</span></td>
+                                <td>${student.nom}</td>
+                                <td>${student.prenom}</td>
+                                <td class="admis">${moyenne}</td>
+                                <td>${student.filiere}</td>
+                                <td><span class="mention">${mention}</span></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">Erreur de connexion</td></tr>';
+                });
+        }
+
+        function loadStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalCount').textContent = data.total;
+                    document.getElementById('admisCount').textContent = data.admis;
+                    
+                    const successRate = data.total > 0 ? Math.round((data.admis / data.total) * 100) : 0;
+                    document.getElementById('successRate').textContent = successRate + '%';
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                });
+        }
+
+        function getMention(moyenne) {
+            if (moyenne >= 16) return 'Très Bien';
+            if (moyenne >= 14) return 'Bien';
+            if (moyenne >= 12) return 'Assez Bien';
+            if (moyenne >= 10) return 'Passable';
+            return 'Non admis';
+        }
+
+        function addStudent() {
+            const cin = document.getElementById('cin').value;
+            const nom = document.getElementById('nom').value;
+            const prenom = document.getElementById('prenom').value;
+            const age = document.getElementById('age').value;
+            const filiere = document.getElementById('filiere').value;
+            
+            if (!/^\d{8}$/.test(cin)) {
+                showMessage('Le CIN doit contenir exactement 8 chiffres', 'error');
+                return;
+            }
+            
+            if (!nom || !prenom || !age || !filiere) {
+                showMessage('Veuillez remplir tous les champs', 'error');
+                return;
+            }
+            
+            fetch('/api/ajouter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cin: cin,
+                    nom: nom,
+                    prenom: prenom,
+                    age: parseInt(age),
+                    filiere: filiere
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`Étudiant ${cin} ajouté avec succès`, 'success');
+                    document.getElementById('studentForm').reset();
+                    loadAllData();
+                } else {
+                    showMessage('Erreur: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur de connexion', 'error');
+            });
+        }
+
+        function addNotes() {
+            const cin = document.getElementById('cin_notes').value;
+            const math = parseFloat(document.getElementById('math').value);
+            const phys = parseFloat(document.getElementById('phys').value);
+            const info = parseFloat(document.getElementById('info').value);
+            
+            if (!/^\d{8}$/.test(cin)) {
+                showMessage('Le CIN doit contenir exactement 8 chiffres', 'error');
+                return;
+            }
+            
+            if (isNaN(math) || isNaN(phys) || isNaN(info)) {
+                showMessage('Veuillez entrer des notes valides', 'error');
+                return;
+            }
+            
+            if (math < 0 || math > 20 || phys < 0 || phys > 20 || info < 0 || info > 20) {
+                showMessage('Les notes doivent être entre 0 et 20', 'error');
+                return;
+            }
+            
+            fetch('/api/ajouter-notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cin: cin,
+                    math: math,
+                    phys: phys,
+                    info: info
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`Notes enregistrées pour CIN ${cin}. Moyenne: ${data.moyenne}`, 'success');
+                    document.getElementById('notesForm').reset();
+                    loadAllData();
+                } else {
+                    showMessage('Erreur: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur de connexion', 'error');
+            });
+        }
+
+        function deleteStudent(cin) {
+            if (!confirm(`Voulez-vous vraiment supprimer l'étudiant CIN ${cin} ?`)) {
+                return;
+            }
+            
+            fetch(`/api/supprimer/${cin}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(`Étudiant ${cin} supprimé`, 'success');
+                    loadAllData();
+                } else {
+                    showMessage('Erreur: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur de connexion', 'error');
+            });
+        }
+
+        function resetDatabase() {
+            if (confirm('ATTENTION: Toutes les données seront effacées! Continuer?')) {
+                fetch('/api/reset', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('Base réinitialisée', 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    }
+                })
+                .catch(error => {
+                    showMessage('Erreur de connexion', 'error');
+                });
+            }
+        }
+    </script>
+</body>
+</html>
