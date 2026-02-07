@@ -1,0 +1,2 @@
+# Python 3.x requis
+# SQLite3 est inclus dans Python
